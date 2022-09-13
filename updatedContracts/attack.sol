@@ -1,16 +1,22 @@
 pragma solidity >=0.5.0 <0.6.0;
 
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "./zombiehelper.sol";
 
 contract ZombieAttack is ZombieHelper {
-    uint randNonce = 0;
+    using Counters for Counters.Counter;
+
+    Counters.Counter private _randNonce;
     uint attackVictoryProbability = 70;
 
-    function randMod(uint _modulus) internal returns (uint) {
-        randNonce++;
+    function _randMod(uint _modulus) internal returns (uint) {
+        _randNonce.increment();
         return
-            uint(keccak256(abi.encodePacked(now, msg.sender, randNonce))) %
-            _modulus;
+            uint(
+                keccak256(
+                    abi.encodePacked(now, msg.sender, _randNonce.current())
+                )
+            ) % _modulus;
     }
 
     function attack(uint _zombieId, uint _targetId)
@@ -19,7 +25,8 @@ contract ZombieAttack is ZombieHelper {
     {
         Zombie storage myZombie = zombies[_zombieId];
         Zombie storage enemyZombie = zombies[_targetId];
-        uint rand = randMod(100);
+        uint rand = _randMod(100);
+
         if (rand <= attackVictoryProbability) {
             myZombie.winCount++;
             myZombie.level++;

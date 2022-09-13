@@ -23,21 +23,18 @@ contract KittyInterface {
 contract ZombieFeeding is ZombieFactory {
     KittyInterface kittyContract;
 
-    function setKittyContractAddress(address _address) external onlyOwner {
-        kittyContract = KittyInterface(_address);
-    }
-
-    function _triggerCooldown(Zombie storage _zombie) internal {
-        _zombie.readyTime = uint32(now + cooldownTime);
+    constructor(address _catAddress) {
+        kittyContract = KittyInterface(_catAddress);
     }
 
     function feedAndMultiply(
         uint _zombieId,
         uint _targetDna,
         string memory _species
-    ) public {
-        require(msg.sender == zombieToOwner[_zombieId]);
+    ) internal ownerOf(_zombieId) {
         Zombie storage myZombie = zombies[_zombieId];
+        require(_isReady(myZombie));
+
         _targetDna = _targetDna % dnaModulus;
         uint newDna = (myZombie.dna + _targetDna) / 2;
         if (
@@ -54,5 +51,31 @@ contract ZombieFeeding is ZombieFactory {
         uint kittyDna;
         (, , , , , , , , , kittyDna) = kittyContract.getKitty(_kittyId);
         feedAndMultiply(_zombieId, kittyDna, "kitty");
+    }
+
+    /*
+     * Helpers
+     */
+    function _triggerCooldown(Zombie storage _zombie) internal {
+        _zombie.readyTime = uint32(now + cooldownTime);
+    }
+
+    function _isReady(Zombie storage _zombie) internal view returns (bool) {
+        return (_zombie.readyTime <= now);
+    }
+
+    /*
+     * Modifiers
+     */
+    modifier ownerOf(uint _zombieId) {
+        require(msg.sender == zombieToOwner[_zombieId]);
+        _;
+    }
+
+    /*
+     * Dev changes
+     */
+    function updateKittyContract(address _catAddress) onlyOwner {
+        kittyContract = KittyInterface(_catAddress);
     }
 }
